@@ -1,0 +1,74 @@
+---
+description: Поведение, UI и ограничения install.sh
+globs: install.sh
+alwaysApply: false
+---
+
+# install.sh
+
+Интерактивный Bash-скрипт: выбор ключа → выбор пользователей → Summary → подтверждение → установка.
+
+## Ключи
+
+**Режимы (меню):**
+- `Simplified` → `id_ed25519` (`KEY_FILE`)
+- `Hardware touch` → `id_ed25519_sk_main` (`KEY_MAIN`)
+
+**Не в меню:** `id_ed25519_sk` (`KEY_GENERAL`) — только для удаления при замене
+
+**Не учитывать:** `id_ed25519_sk_fast`.
+
+**Правило authorized_keys:**
+- Удалять только известные личные ключи (три выше)
+- Чужие/неизвестные ключи не трогать
+- Выбранный ключ добавлять с комментарием `me@aryapaw.dev`
+
+## Пользователи
+
+Список без дублей:
+- текущий effective user
+- `root`
+- UID >= 1000, валидный `$HOME`, shell не `nologin`/`false`
+
+Метки: `(current)`, `(sudo user)` через `$SUDO_USER` — в скобках.
+
+Выбор: номера через запятую (`1,3,m`), также `a`, `m`, `q`. Manual input — несколько username через пробел.
+
+Root нужен для установки другим пользователям; проверка перед apply с понятной ошибкой.
+
+Несуществующий manual user: виден в Summary, при apply — `WARN` и skip.
+
+## Summary (обязательно перед apply)
+
+По каждому пользователю:
+- путь к `authorized_keys`
+- какой ключ добавится
+- какие известные ключи найдены
+- какие будут удалены
+- если выбранный уже есть — `refresh: ... will be rewritten`
+
+## UI / цвета
+
+Строгая палитра, без жёлтого и «гирлянды»:
+
+| Переменная | Назначение | 256-color |
+|------------|------------|-----------|
+| `TEXT` | основной текст | 255 white |
+| `MUTED` | подписи | 245 grey |
+| `ACCENT` / `NUM` | акцент, prompt | 203 soft red |
+| `BRAND` | `AryaPaw` в title | 141 purple |
+| `SIMPLE` | Simplified / id_ed25519 | 117 light blue |
+| `HARDWARE` | Hardware touch | ACCENT red |
+| `OKC` | статус OK | 114 soft green |
+| `WARNC` / `ERRC` | WARN / ERROR | ACCENT red |
+
+- Title: `%bAryaPaw%b SSH access installer` — ник фиолетовый
+- Пункты меню выровнены; ключи без скобок: `1`, `q`, не `1)` / `1.`
+- Цвета отключаются при `NO_COLOR` или не-TTY
+- Хелперы: `title`, `option`, `ok`, `warn`, `error`, `prompt`
+
+## Структура функций
+
+`choose_key` → `choose_users` → `confirm_and_apply` (`print_user_plan`, `require_root_for_targets`, `apply_key`).
+
+При правках сохранять существующие имена и flow; новую логику встраивать в текущие функции.
