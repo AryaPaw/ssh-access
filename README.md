@@ -48,6 +48,8 @@ For installing to `root` or other users:
 curl -fsSLO 'https://raw.githubusercontent.com/AryaPaw/ssh-access/main/install.sh' && sudo bash install.sh
 ```
 
+The downloaded `install.sh` removes itself on exit when run outside a Git checkout. To keep the file, set `SSH_ACCESS_KEEP=1`.
+
 ## Run without saving the launcher command to Bash history
 
 ```bash
