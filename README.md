@@ -38,22 +38,24 @@ To modify users other than the current one, run the script with `sudo`.
 
 Replace `AryaPaw/ssh-access` if the repository is named differently.
 
+Use an explicit output name so an existing `install.sh` in the current directory is not overwritten:
+
 ```bash
-curl -fsSLO 'https://raw.githubusercontent.com/AryaPaw/ssh-access/main/install.sh' && bash install.sh
+curl -fsSL 'https://raw.githubusercontent.com/AryaPaw/ssh-access/main/ssh-access-install.sh' -o "ssh-access-install-$$.sh" && bash "ssh-access-install-$$.sh"
 ```
 
 For installing to `root` or other users:
 
 ```bash
-curl -fsSLO 'https://raw.githubusercontent.com/AryaPaw/ssh-access/main/install.sh' && sudo bash install.sh
+curl -fsSL 'https://raw.githubusercontent.com/AryaPaw/ssh-access/main/ssh-access-install.sh' -o "ssh-access-install-$$.sh" && sudo bash "ssh-access-install-$$.sh"
 ```
 
-The downloaded `install.sh` removes itself on exit when run outside a Git checkout. To keep the file, set `SSH_ACCESS_KEEP=1`.
+When run outside a Git checkout, the script copies itself to a temp file, removes the downloaded copy from the current directory, runs from `/tmp`, returns to the original directory on exit, and deletes the temp copy. To keep files on disk, set `SSH_ACCESS_KEEP=1`.
 
 ## Run without saving the launcher command to Bash history
 
 ```bash
-export HISTFILE=/dev/null; set +o history; trap '' DEBUG; curl -fsSLO 'https://raw.githubusercontent.com/AryaPaw/ssh-access/main/install.sh' && sudo bash install.sh; HN="$(history 1 2>/dev/null | awk '{print $1}')"; [ -n "$HN" ] && history -d "$HN" 2>/dev/null || true
+export HISTFILE=/dev/null; set +o history; trap '' DEBUG; curl -fsSL 'https://raw.githubusercontent.com/AryaPaw/ssh-access/main/ssh-access-install.sh' -o "ssh-access-install-$$.sh" && sudo bash "ssh-access-install-$$.sh"; HN="$(history 1 2>/dev/null | awk '{print $1}')"; [ -n "$HN" ] && history -d "$HN" 2>/dev/null || true
 ```
 
 This only affects ordinary shell history. It does not hide commands from audit logs, terminal scrollback, session recording, or provider consoles.
@@ -61,7 +63,7 @@ This only affects ordinary shell history. It does not hide commands from audit l
 ## Safer manual review flow
 
 ```bash
-curl -fsSLO 'https://raw.githubusercontent.com/AryaPaw/ssh-access/main/install.sh' && less install.sh && sudo bash install.sh
+curl -fsSL 'https://raw.githubusercontent.com/AryaPaw/ssh-access/main/ssh-access-install.sh' -o "ssh-access-install-$$.sh" && less "ssh-access-install-$$.sh" && sudo bash "ssh-access-install-$$.sh"
 ```
 
 ## Suggested repository names

@@ -24,20 +24,23 @@ self_script_path() {
   printf '%s/%s\n' "$dir" "$(basename "$path")"
 }
 
-should_self_delete() {
-  local dir
+is_repo_checkout() {
+  git -C "$1" rev-parse --is-inside-work-tree >/dev/null 2>&1
+}
 
+should_self_delete() {
   if [ -n "${SSH_ACCESS_KEEP:-}" ]; then
     return 1
   fi
 
-  dir="$(dirname "$SCRIPT_SELF")"
-
-  if git -C "$dir" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
-    return 1
-  fi
+  is_repo_checkout "$(dirname "$SCRIPT_SELF")" && return 1
 
   return 0
+}
+
+restore_original_pwd() {
+  [ -n "${SSH_ACCESS_ORIGINAL_PWD:-}" ] || return 0
+  cd "$SSH_ACCESS_ORIGINAL_PWD" 2>/dev/null || true
 }
 
 remove_self() {
@@ -46,9 +49,38 @@ remove_self() {
   rm -f -- "$SCRIPT_SELF"
 }
 
+on_exit() {
+  restore_original_pwd
+  remove_self
+}
+
+bootstrap_if_needed() {
+  local source tmp
+
+  [ "${SSH_ACCESS_BOOTSTRAPPED:-}" = 1 ] && return 0
+  should_self_delete || return 0
+
+  source="$SCRIPT_SELF"
+  tmp="$(mktemp "${TMPDIR:-/tmp}/ssh-access-install.XXXXXX.sh")"
+  cp "$source" "$tmp"
+  chmod 700 "$tmp"
+  rm -f -- "$source"
+
+  export SSH_ACCESS_BOOTSTRAPPED=1
+  export SSH_ACCESS_ORIGINAL_PWD="${SSH_ACCESS_ORIGINAL_PWD:-$(pwd -P)}"
+
+  exec env \
+    SSH_ACCESS_KEEP="${SSH_ACCESS_KEEP:-}" \
+    SSH_ACCESS_BOOTSTRAPPED=1 \
+    SSH_ACCESS_ORIGINAL_PWD="$SSH_ACCESS_ORIGINAL_PWD" \
+    bash "$tmp" "$@"
+}
+
 if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
+  SSH_ACCESS_ORIGINAL_PWD="${SSH_ACCESS_ORIGINAL_PWD:-$(pwd -P)}"
   SCRIPT_SELF="$(self_script_path "${BASH_SOURCE[0]}")"
-  trap remove_self EXIT
+  bootstrap_if_needed "$@"
+  trap on_exit EXIT
 fi
 
 if [ -t 1 ] && [ "${NO_COLOR:-}" = "" ]; then
@@ -163,7 +195,7 @@ require_root_for_targets() {
 
   for user in "${TARGET_USERS[@]}"; do
     if [ "$user" != "$current_user" ]; then
-      error "Installing keys for other users requires root. Run: sudo bash install.sh"
+      error "Installing keys for other users requires root. Run: sudo bash ssh-access-install.sh"
       exit 1
     fi
   done
